@@ -102,10 +102,8 @@ let check_line line pos =
 let check_document ~include_sections ~ignore_sections s =
   try
     let md = Omd.of_string s in
-    let okrs = Aggregate.process ~include_sections ~ignore_sections md in
-    let _ =
-      List.map Aggregate.of_weekly (List.of_seq (Hashtbl.to_seq_values okrs))
-    in
+    let okrs = Aggregate.of_makdown ~include_sections ~ignore_sections md in
+    let _ = Aggregate.reports okrs in
     No_error
   with
   | Aggregate.No_time_found s -> No_time_found s

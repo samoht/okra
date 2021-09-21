@@ -32,59 +32,20 @@ exception No_KR_ID_found of string (* Empty or no KR ID *)
 
 exception No_title_found of string (* No title found *)
 
-(* Type for sanitized post-ast version *)
-type t = {
-  counter : int;
-  project : string;
-  objective : string;
-  kr_title : string;
-  kr_id : string;
-  time_entries : string list;
-  time_per_engineer : (string, float) Hashtbl.t;
-  work : string list;
-}
+(* Types for parsing the AST *)
+type elt =
+  | O of string (* Objective name, without lead *)
+  | Proj of string (* Project name / pillar *)
+  | KR of string (* Full name of KR, with ID *)
+  | KR_id of string (* ID of KR *)
+  | KR_title of string (* Title without ID, tech lead *)
+  | Work of string list (* List of work items *)
+  | Time of string (* Time entry *)
+  | Counter of int
+(* Increasing counter to be able to sort multiple entries by time *)
 
-let compare a b =
-  if String.compare a.project b.project = 0 then
-    (* compare on project first *)
-    if String.compare a.objective b.objective = 0 then
-      (* then obj if proj equal *)
-      (* Check if KR IDs are the same --if one of the KR IDs are
-         blank, compare on title instead *)
-      let compare_kr_id =
-        if
-          a.kr_id = ""
-          || b.kr_id = ""
-          || a.kr_id = "NEW KR"
-          || b.kr_id = "NEW KR"
-          || a.kr_id = "NEW OKR"
-          || b.kr_id = "NEW OKR"
-        then String.compare a.kr_title b.kr_title
-        else String.compare a.kr_id b.kr_id
-      in
-      (* If KRs match, check counter *)
-      if compare_kr_id = 0 then compare a.counter b.counter else compare_kr_id
-    else String.compare a.objective b.objective
-  else String.compare a.project b.project
-
-module Weekly = struct
-  (* Types for parsing the AST *)
-  type elt =
-    | O of string (* Objective name, without lead *)
-    | Proj of string (* Project name / pillar *)
-    | KR of string (* Full name of KR, with ID *)
-    | KR_id of string (* ID of KR *)
-    | KR_title of string (* Title without ID, tech lead *)
-    | Work of string list (* List of work items *)
-    | Time of string (* Time entry *)
-    | Counter of int
-  (* Increasing counter to be able to sort multiple entries by time *)
-
-  type t = elt list list
-  type table = (string, t) Hashtbl.t
-end
-
-open Weekly
+type t = (string, elt list list) Hashtbl.t
+type markdown = (string * string) list Omd.block list
 
 let okr_re = Str.regexp "\\(.+\\) (\\([a-zA-Z]+[0-9]+\\))$"
 (* Header: This is a KR (KR12) *)
@@ -337,8 +298,8 @@ let rec process t ht ast =
   | hd :: tl -> process t ht (process_entry t ht hd tl)
   | [] -> ()
 
-let process ?(ignore_sections = [ "OKR Updates" ]) ?(include_sections = []) ast
-    =
+let of_makdown ?(ignore_sections = [ "OKR Updates" ]) ?(include_sections = [])
+    ast =
   let u_ignore = List.map String.uppercase_ascii ignore_sections in
   let u_include = List.map String.uppercase_ascii include_sections in
   let state = init ~ignore_sections:u_ignore ~include_sections:u_include () in
@@ -346,7 +307,7 @@ let process ?(ignore_sections = [ "OKR Updates" ]) ?(include_sections = []) ast
   process state store ast;
   store
 
-let of_weekly okr_list =
+let entry okr_list =
   (* This function expects a list of entries for the same KR, typically
      corresponding to a set of weekly reports. Each list item will consist of
      a list of okr_t items, which provides time, work items etc for this entry.
@@ -464,7 +425,7 @@ let of_weekly okr_list =
 
   (* Construct final entry *)
   {
-    counter = !okr_counter;
+    Reports.counter = !okr_counter;
     project = !okr_proj;
     objective = !okr_obj;
     kr_title = !okr_kr_title;
@@ -479,14 +440,18 @@ let ht_add_or_sum ht k v =
   | None -> Hashtbl.add ht k v
   | Some x -> Hashtbl.replace ht k (Float.add v x)
 
+let reports okrs = List.map entry (List.of_seq (Hashtbl.to_seq_values okrs))
+
 let by_engineer ?(include_krs = []) okrs =
-  let v = List.map of_weekly (List.of_seq (Hashtbl.to_seq_values okrs)) in
+  let v = reports okrs in
   let uppercase_include_krs = List.map String.uppercase_ascii include_krs in
   let result = Hashtbl.create 7 in
   List.iter
     (fun e ->
       (* only proceed if include_krs is empty or has a match *)
-      if List.length include_krs = 0 || List.mem e.kr_id uppercase_include_krs
+      if
+        List.length include_krs = 0
+        || List.mem e.Reports.kr_id uppercase_include_krs
       then
         Hashtbl.iter (fun k w -> ht_add_or_sum result k w) e.time_per_engineer
       else ()) (* skip this KR *)

@@ -38,9 +38,10 @@ let run ?(conf = default_conf) file =
   let str = really_input_string ic (in_channel_length ic) in
   let md = Omd.of_string str in
   let okrs =
-    Okra.Aggregate.process ~ignore_sections:conf.ignore_sections
+    Okra.Aggregate.of_makdown ~ignore_sections:conf.ignore_sections
       ~include_sections:conf.include_sections md
   in
+  let okrs = Okra.Aggregate.reports okrs in
   let pp ppf okrs =
     Okra.Reports.pp ~show_time:conf.show_time
       ~show_time_calc:conf.show_time_calc ~show_engineers:conf.show_engineers

@@ -16,7 +16,41 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-open Aggregate
+type entry = {
+  counter : int;
+  project : string;
+  objective : string;
+  kr_title : string;
+  kr_id : string;
+  time_entries : string list;
+  time_per_engineer : (string, float) Hashtbl.t;
+  work : string list;
+}
+
+type t = entry list
+
+let compare a b =
+  if String.compare a.project b.project = 0 then
+    (* compare on project first *)
+    if String.compare a.objective b.objective = 0 then
+      (* then obj if proj equal *)
+      (* Check if KR IDs are the same --if one of the KR IDs are
+         blank, compare on title instead *)
+      let compare_kr_id =
+        if
+          a.kr_id = ""
+          || b.kr_id = ""
+          || a.kr_id = "NEW KR"
+          || b.kr_id = "NEW KR"
+          || a.kr_id = "NEW OKR"
+          || b.kr_id = "NEW OKR"
+        then String.compare a.kr_title b.kr_title
+        else String.compare a.kr_id b.kr_id
+      in
+      (* If KRs match, check counter *)
+      if compare_kr_id = 0 then compare a.counter b.counter else compare_kr_id
+    else String.compare a.objective b.objective
+  else String.compare a.project b.project
 
 let pp_days ppf d =
   let d = floor (d *. 2.0) /. 2. in
@@ -34,11 +68,9 @@ let pp_engineers ~time ppf entries =
   let entries = List.sort (fun (x, _) (y, _) -> String.compare x y) entries in
   line ppf "%a" Fmt.(list ~sep:(unit ", ") (pp_engineer ~time)) entries
 
+(* FIXME: remove side-effect *)
 let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
     ?(show_engineers = true) ppf okrs =
-  let v =
-    List.map Aggregate.of_weekly (List.of_seq (Hashtbl.to_seq_values okrs))
-  in
   let uppercase_include_krs = List.map String.uppercase_ascii include_krs in
   let c_project = ref "" in
   let c_objective = ref "" in
@@ -83,4 +115,4 @@ let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
             Fmt.pf ppf "@[<hov 4>  - %s@]" lines)
           ppf e.work)
       else () (* skip this KR *))
-    (List.sort Aggregate.compare v)
+    (List.sort compare okrs)

@@ -22,36 +22,15 @@ exception No_work_found of string
 exception No_KR_ID_found of string
 exception No_title_found of string
 
-type t = {
-  counter : int;
-  project : string;
-  objective : string;
-  kr_title : string;
-  kr_id : string;
-  time_entries : string list;
-  time_per_engineer : (string, float) Hashtbl.t;
-  work : string list;
-}
-(** TODO: make it abstract *)
+type elt
+type t = (string, elt list list) Hashtbl.t
+type markdown = (string * string) list Omd.block list
 
-val compare : t -> t -> int
-
-module Weekly : sig
-  type elt
-  type t = elt list list
-  type table = (string, t) Hashtbl.t
-end
-
-val process :
-  ?ignore_sections:string list ->
-  ?include_sections:string list ->
-  (string * string) list Omd.block list ->
-  Weekly.table
+val of_makdown :
+  ?ignore_sections:string list -> ?include_sections:string list -> markdown -> t
 (** Process markdown data from omd. Optionally [ignore_sections] can be used to
     ignore specific sections, or [include_sections] can be used to only process
     specific sections. *)
 
-val of_weekly : Weekly.t -> t
-
-val by_engineer :
-  ?include_krs:string list -> Weekly.table -> (string, float) Hashtbl.t
+val reports : t -> Reports.t
+val by_engineer : ?include_krs:string list -> t -> (string, float) Hashtbl.t

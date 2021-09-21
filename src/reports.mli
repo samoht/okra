@@ -16,12 +16,26 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
+type entry = {
+  counter : int;
+  project : string;
+  objective : string;
+  kr_title : string;
+  kr_id : string;
+  time_entries : string list;
+  time_per_engineer : (string, float) Hashtbl.t;
+  work : string list;
+}
+(** FIXME: abstract the type *)
+
+type t = entry list
+
 val pp :
   ?include_krs:string list ->
   ?show_time:bool ->
   ?show_time_calc:bool ->
   ?show_engineers:bool ->
-  Aggregate.Weekly.table Fmt.t
+  t Fmt.t
 (** [pp] pretty-print weekly team reports.
 
     [include_krs] only includes this list of KR IDs. Note that this will ignore

@@ -1,5 +1,6 @@
 (*
- * Copyright (c) 2021 Magnus Skjegstad <magnus@skjegstad.com>
+ * Copyright (c) 2021 Magnus Skjegstad
+ * Copyright (c) 2021 Thomas Gazagnaire <thomas@gazagnaire.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,23 +15,31 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-let aggregate_by_engineer f =
-  let ic = open_in f in
-  let omd = Omd.of_channel ic in
-  let p = Okra.Aggregate.of_makdown omd in
-  let res = Okra.Aggregate.by_engineer p in
-  close_in ic;
-  res
+(** The subset of mardown supported for work items *)
 
-let test_time_parsing f () =
-  let res = aggregate_by_engineer f in
-  Alcotest.(check (float 0.0)) "eng1 time" 3.0 (Hashtbl.find res "eng1");
-  Alcotest.(check (float 0.0)) "eng3 time" 5.0 (Hashtbl.find res "eng3");
-  Alcotest.(check (float 0.0)) "eng4 time" 1.5 (Hashtbl.find res "eng4")
+type list_type = Ordered of int * char | Bullet of char
 
-let tests =
-  [
-    ( "Test_time_parsing",
-      `Quick,
-      test_time_parsing "./aggregate/valid-time1.acc" );
-  ]
+type inline =
+  | Concat of inline list
+  | Text of string
+  | Emph of inline
+  | Strong of inline
+  | Code of string
+  | Hard_break
+  | Soft_break
+  | Link of link
+  | Image of link
+  | Html of string
+
+and link = { label : inline; destination : string; title : string option }
+
+type t =
+  | Paragraph of inline
+  | List of list_type * t list list
+  | Blockquote of t list
+  | Code_block of string * string
+
+val pp : t Fmt.t
+val pp_inline : inline Fmt.t
+val dump : t Fmt.t
+val dump_inline : inline Fmt.t

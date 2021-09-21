@@ -81,14 +81,14 @@ let rec pp_inline ppf = function
   | Emph e -> Fmt.pf ppf "*%a*" pp_inline e
   | Strong e -> Fmt.pf ppf "**%a**" pp_inline e
   | Code s -> Fmt.pf ppf "`%s`" s
-  | Hard_break -> Fmt.pf ppf "@."
-  | Soft_break -> Fmt.pf ppf "@.@."
+  | Hard_break -> Fmt.pf ppf "@.@."
+  | Soft_break -> Fmt.pf ppf "@."
   | Link l -> Fmt.pf ppf "[%a](%s)" pp_inline l.label l.destination
   | Image l -> Fmt.pf ppf "![%a](%s)" pp_inline l.label l.destination
   | Html s -> Fmt.string ppf s
 
 let rec pp ppf = function
-  | Paragraph t -> Fmt.hovbox pp_inline ppf t
+  | Paragraph t -> pp_inline ppf t
   | List (Ordered (i, c), y) ->
       List.iter
         (fun e ->

@@ -106,7 +106,9 @@ let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
           else
             line ppf "  - %a@." (pp_engineers ~time:false) e.time_per_engineer;
         Fmt.list ~sep:Fmt.cut
-          (fun ppf s -> Fmt.pf ppf "@[<hov 4>  - %a@]" Item.pp s)
+          (fun ppf s ->
+            Fmt.epr "XXX %a\n%!" Item.dump s;
+            Fmt.pf ppf "@[<hov 4>  - %a@]" Item.pp s)
           ppf e.work)
       else () (* skip this KR *))
     (List.sort compare okrs)

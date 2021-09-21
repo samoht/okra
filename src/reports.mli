@@ -24,7 +24,7 @@ type entry = {
   kr_id : string;
   time_entries : string list;
   time_per_engineer : (string, float) Hashtbl.t;
-  work : string list;
+  work : Item.t list;
 }
 (** FIXME: abstract the type *)
 

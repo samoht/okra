@@ -24,7 +24,7 @@ type entry = {
   kr_id : string;
   time_entries : string list;
   time_per_engineer : (string, float) Hashtbl.t;
-  work : string list;
+  work : Item.t list;
 }
 
 type t = entry list
@@ -106,13 +106,7 @@ let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
           else
             line ppf "  - %a@." (pp_engineers ~time:false) e.time_per_engineer;
         Fmt.list ~sep:Fmt.cut
-          (fun ppf s ->
-            (* hack to align internal lines *)
-            let lines = String.split_on_char '\n' s in
-            (* remove the last '\n' *)
-            let lines = List.rev (List.tl (List.rev lines)) in
-            let lines = String.concat "\n    " lines in
-            Fmt.pf ppf "@[<hov 4>  - %s@]" lines)
+          (fun ppf s -> Fmt.pf ppf "@[<hov 4>  - %a@]" Item.pp s)
           ppf e.work)
       else () (* skip this KR *))
     (List.sort compare okrs)

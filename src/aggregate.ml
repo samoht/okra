@@ -32,6 +32,9 @@ exception No_KR_ID_found of string (* Empty or no KR ID *)
 
 exception No_title_found of string (* No title found *)
 
+exception Invalid_markdown_in_work_items of string
+(* Subset of markdown not supported in work items *)
+
 (* Types for parsing the AST *)
 type elt =
   | O of string (* Objective name, without lead *)
@@ -39,7 +42,7 @@ type elt =
   | KR of string (* Full name of KR, with ID *)
   | KR_id of string (* ID of KR *)
   | KR_title of string (* Title without ID, tech lead *)
-  | Work of string list (* List of work items *)
+  | Work of Item.t list (* List of work items *)
   | Time of string (* Time entry *)
   | Counter of int
 (* Increasing counter to be able to sort multiple entries by time *)
@@ -93,20 +96,17 @@ let parse_okr_title s =
             String.trim (Str.matched_group 2 s) )
 
 let pp ppf okr =
-  let pf fmt = Fmt.pf ppf fmt in
   let pp ppf = function
-    | Proj s -> pf "P: %s" s
-    | O s -> pf "O: %s" s
-    | KR s -> pf "KR: %s" s
-    | KR_id s -> pf "KR id: %s" s
-    | KR_title s -> pf "KR title: %s" s
-    | Work w ->
-        let pp ppf e = Fmt.pf ppf "W: %s" e in
-        Fmt.list ~sep:(Fmt.unit ", ") pp ppf w
-    | Time _ -> pf "Time: <not shown>"
-    | Counter c -> pf "Cnt: %d" c
+    | Proj s -> Fmt.pf ppf "P: %s" s
+    | O s -> Fmt.pf ppf "O: %s" s
+    | KR s -> Fmt.pf ppf "KR: %s" s
+    | KR_id s -> Fmt.pf ppf "KR id: %s" s
+    | KR_title s -> Fmt.pf ppf "KR title: %s" s
+    | Work w -> Fmt.pf ppf "W: %a" Fmt.Dump.(list Item.pp) w
+    | Time _ -> Fmt.pf ppf "Time: <not shown>"
+    | Counter c -> Fmt.pf ppf "Cnt: %d" c
   in
-  Fmt.list ~sep:(Fmt.unit ", ") pp ppf okr
+  Fmt.Dump.list pp ppf okr
 
 let store_result store okr_list =
   let key1 =
@@ -138,68 +138,62 @@ let store_result store okr_list =
       | Some x -> Hashtbl.replace store key (x @ [ okr_list ]))
 
 let rec inline = function
-  | Concat (_, xs) -> List.concat (List.map inline xs)
-  | Text (_, s) -> [ s ]
-  | Emph (_, s) -> "*" :: inline s @ [ "*" ]
-  | Strong (_, s) -> "**" :: inline s @ [ "**" ]
-  | Code (_, s) -> [ "`"; s; "`" ]
-  | Hard_break _ -> [ "\n\n" ]
-  | Soft_break _ -> [ "\n" ]
-  | Link (_, { label; destination; _ }) ->
-      "[" :: inline label @ [ "]("; destination; ")" ]
-  | Html _ -> [ "**html-ignored**" ]
-  | Image _ -> [ "**img ignored**" ]
+  | Concat (_, xs) -> Item.Concat (List.map inline xs)
+  | Text (_, s) -> Item.Text s
+  | Emph (_, s) -> Item.Emph (inline s)
+  | Strong (_, s) -> Item.Strong (inline s)
+  | Code (_, s) -> Item.Code s
+  | Hard_break _ -> Item.Hard_break
+  | Soft_break _ -> Item.Soft_break
+  | Link (_, { label; destination; title }) ->
+      Item.Link { label = inline label; destination; title }
+  | Html (_, s) -> Item.Html s
+  | Image (_, { label; destination; title }) ->
+      Item.Image { label = inline label; destination; title }
 
-let insert_indent l =
-  let rec aux = function
-    | [] -> []
-    | "\n" :: t -> "\n" :: aux t
-    | x :: t -> ("  " ^ x) :: aux t
-  in
-  match l with [] -> [] | h :: t -> h :: aux t
+let list_type = function
+  | Ordered (i, c) -> Item.Ordered (i, c)
+  | Bullet c -> Item.Bullet c
 
 let rec block = function
-  | Paragraph (_, x) -> inline x @ [ "\n" ]
-  | List (_, _, _, bls) -> List.map list_items bls
-  | Blockquote (_, x) -> "> " :: List.concat (List.map block x)
-  | Thematic_break _ -> [ "*thematic-break-ignored*" ]
-  | Heading (_, level, text) -> String.make level '#' :: inline text @ [ "\n" ]
-  | Code_block (_, info, _) -> [ "```"; info; "```" ]
-  | Html_block _ -> [ "*html-ignored*" ]
-  | Definition_list _ -> [ "*def-list-ignored*" ]
-
-and list_items items =
-  let items = List.map block items in
-  let items = List.concat @@ List.map insert_indent items in
-  String.concat "" ("- " :: items)
+  | Paragraph (_, x) -> Item.Paragraph (inline x)
+  | List (_, x, _, bls) -> Item.List (list_type x, List.map (List.map block) bls)
+  | Blockquote (_, x) -> Item.Blockquote (List.map block x)
+  | Code_block (_, x, y) -> Item.Code_block (x, y)
+  | Html_block _ -> raise (Invalid_markdown_in_work_items "Html_bloc")
+  | Definition_list _ ->
+      raise (Invalid_markdown_in_work_items "Definition_list")
+  | Thematic_break _ -> raise (Invalid_markdown_in_work_items "Thematic_break")
+  | Heading _ -> raise (Invalid_markdown_in_work_items "Heading")
 
 let block_okr = function
   | Paragraph (_, x) -> (
-      let okr_title = String.trim (String.concat "" (inline x)) in
+      let to_string = Fmt.to_to_string Item.pp_inline in
+      let okr_title = String.trim (to_string (inline x)) in
       match parse_okr_title okr_title with
       | None -> [ KR okr_title; KR_title okr_title ]
       | Some (title, id) -> [ KR okr_title; KR_title title; KR_id id ])
-  | List (_, _, _, bls) ->
+  | List (_, _, _, bls) -> (
       if List.length (List.filter is_time_block bls) > 1 then
         (* This is fatal, as we can miss tracked time if this occurs
-            -- time should always be summarised in first entry *)
+           -- time should always be summarised in first entry *)
         raise (Multiple_time_entries "Multiple time entries found")
       else ();
-      let tb = List.hd bls in
-      (* Assume first block is time if present, and ... *)
-      if is_time_block tb then
-        (* todo verify that this is true *)
-        let time_s =
-          String.concat "" (List.map (fun xs -> String.concat "" (block xs)) tb)
-        in
-        let work_items =
-          Work
-            (List.map
-               (fun xs -> String.concat "" (List.concat (List.map block xs)))
-               (List.tl bls))
-        in
-        [ Time time_s; work_items ]
-      else []
+      match bls with
+      | [] -> []
+      | tb :: tl ->
+          if
+            (* Assume first block is time if present, and ... *)
+            is_time_block tb
+          then
+            (* todo verify that this is true *)
+            let to_string = Fmt.to_to_string Item.pp in
+            let time_s =
+              String.concat "" (List.map (fun b -> to_string (block b)) tb)
+            in
+            let work_items = List.concat_map (List.map block) tl in
+            [ Time time_s; Work work_items ]
+          else [])
   | _ -> []
 
 let strip_obj_lead s =
@@ -390,14 +384,9 @@ let entry okr_list =
 
   (* Add work items in order, concat all the lists *)
   let work =
-    List.concat
-      (List.map
-         (fun elements ->
-           List.concat
-             (List.map
-                (fun el -> match el with Work w -> w | _ -> [])
-                elements))
-         okr_list)
+    List.concat_map
+      (List.concat_map (function Work e -> e | _ -> []))
+      okr_list
   in
 
   (* Some basic sanity checking *)

@@ -16,10 +16,6 @@
 
 let lint_file ?(include_sections = []) ?(ignore_sections = []) f =
   let ic = open_in f in
-  let str = really_input_string ic (in_channel_length ic) in
-  Fmt.epr "XXX %S\n%!" str;
-  close_in ic;
-  let ic = open_in f in
   let res = Okra.Lint.lint ~include_sections ~ignore_sections ic in
   close_in ic;
   res

@@ -138,6 +138,7 @@ let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
         let work =
           concat_map
             (fun l ->
+              Fmt.epr "XXX ITEM=%a\n%!" Fmt.Dump.(list Item.dump) l;
               string "  - " ^^ nest 4 (concat_map (fun e -> Item.pp e) l))
             e.work
         in

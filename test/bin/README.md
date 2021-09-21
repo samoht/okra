@@ -159,7 +159,10 @@ Error(s) in file bactrian.bad.md:
 
 No time entry found. Each KR must be followed by '-
 .. (x days)
-Error: WARNING: Time not found. Ignored P: Last Week, O: Last Week, Cnt: 1, KR: Make Okra, the OKR management tool (OKR1), KR title: Make Okra, the OKR management tool, KR id: OKR1
+Error: Time not found.
+  [P: Last Week; O: Last Week; Cnt: 1;
+   KR: Make Okra, the OKR management tool (OKR1);
+   KR title: Make Okra, the OKR management tool; KR id: OKR1]
 
 [1]
 ```

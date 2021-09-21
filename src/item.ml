@@ -75,35 +75,40 @@ let rec dump ppf = function
 
 (* Pretty-print contents *)
 
-let rec pp_inline ppf = function
-  | Concat c -> List.iter (pp_inline ppf) c
-  | Text s -> Fmt.string ppf s
-  | Emph e -> Fmt.pf ppf "*%a*" pp_inline e
-  | Strong e -> Fmt.pf ppf "**%a**" pp_inline e
-  | Code s -> Fmt.pf ppf "`%s`" s
-  | Hard_break -> Fmt.pf ppf "@.@."
-  | Soft_break -> Fmt.pf ppf "@."
-  | Link l -> Fmt.pf ppf "[%a](%s)" pp_inline l.label l.destination
-  | Image l -> Fmt.pf ppf "![%a](%s)" pp_inline l.label l.destination
-  | Html s -> Fmt.string ppf s
+open PPrint
 
-let rec pp ppf = function
-  | Paragraph t -> pp_inline ppf t
+let rec pp_inline = function
+  | Concat c -> group (concat_map pp_inline c)
+  | Text s -> string s
+  | Emph e -> group (string "*" ^^ pp_inline e ^^ string "*")
+  | Strong e -> group (string "**" ^^ pp_inline e ^^ string "**")
+  | Code s -> group (string "`" ^^ string s ^^ string "`")
+  | Hard_break -> hardline ^^ hardline
+  | Soft_break -> hardline
+  | Link l ->
+      group
+        (string "["
+        ^^ pp_inline l.label
+        ^^ string "]("
+        ^^ string l.destination
+        ^^ string ")")
+  | Image l ->
+      group
+        (string "!["
+        ^^ pp_inline l.label
+        ^^ string "]("
+        ^^ string l.destination
+        ^^ string ")")
+  | Html s -> arbitrary_string s
+
+let stringf fmt = Fmt.kstr string fmt
+
+let rec pp = function
+  | Paragraph t -> pp_inline t ^^ hardline
   | List (Ordered (i, c), y) ->
-      List.iter
-        (fun e ->
-          Fmt.pf ppf "%d%c " i c;
-          List.iter (pp ppf) e;
-          Fmt.pf ppf "@.")
-        y
+      concat_map (fun e -> stringf "%d%c " i c ^^ nest 2 (concat_map pp e)) y
   | List (Bullet c, y) ->
-      List.iter
-        (fun e ->
-          Fmt.pf ppf "%c " c;
-          List.iter (pp ppf) e;
-          Fmt.pf ppf "@.")
-        y
-  | Blockquote l ->
-      Fmt.pf ppf "> ";
-      List.iter (pp ppf) l
-  | Code_block (x, y) -> Fmt.pf ppf "```%s@.%s@.```" x y
+      concat_map (fun e -> stringf "%c " c ^^ nest 2 (concat_map pp e)) y
+  | Blockquote l -> group (string "> " ^^ concat_map pp l)
+  | Code_block (x, y) ->
+      nest 0 (string "```" ^^ string x ^/^ string y ^/^ string "```")

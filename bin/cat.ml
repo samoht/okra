@@ -98,12 +98,12 @@ let run conf =
       ~include_sections:conf.include_sections md
   in
   let okrs = Okra.Aggregate.reports okrs in
-  let pp ppf okrs =
+  let doc =
     Okra.Reports.pp ~show_time:conf.show_time
       ~show_time_calc:conf.show_time_calc ~show_engineers:conf.show_engineers
-      ~include_krs:conf.include_krs ppf okrs
+      ~include_krs:conf.include_krs okrs
   in
-  Fmt.pr "%a" pp okrs
+  PPrint.ToChannel.pretty 10. 80 stdout doc
 
 let term =
   let cat show_time show_time_calc show_engineers include_krs ignore_sections

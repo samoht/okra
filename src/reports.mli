@@ -24,7 +24,7 @@ type entry = {
   kr_id : string;
   time_entries : string list;
   time_per_engineer : (string, float) Hashtbl.t;
-  work : Item.t list;
+  work : Item.t list list;
 }
 (** FIXME: abstract the type *)
 
@@ -35,7 +35,8 @@ val pp :
   ?show_time:bool ->
   ?show_time_calc:bool ->
   ?show_engineers:bool ->
-  t Fmt.t
+  t ->
+  PPrint.document
 (** [pp] pretty-print weekly team reports.
 
     [include_krs] only includes this list of KR IDs. Note that this will ignore

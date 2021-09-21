@@ -42,12 +42,12 @@ let run ?(conf = default_conf) file =
       ~include_sections:conf.include_sections md
   in
   let okrs = Okra.Aggregate.reports okrs in
-  let pp ppf okrs =
+  let doc =
     Okra.Reports.pp ~show_time:conf.show_time
       ~show_time_calc:conf.show_time_calc ~show_engineers:conf.show_engineers
-      ~include_krs:conf.include_krs ppf okrs
+      ~include_krs:conf.include_krs okrs
   in
-  Fmt.pr "%a\n%!" pp okrs
+  PPrint.ToChannel.pretty 10. 80 stdout doc
 
 let () =
   if Array.length Sys.argv <> 2 then Fmt.epr "usage: ./test.exe file"

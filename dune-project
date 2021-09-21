@@ -27,7 +27,7 @@
  (depends
   (ocaml (>= 4.07))
   (alcotest :with-test)
-  fmt
+  pprint
   get-activity
   calendar
   (omd (>= 2.0))))

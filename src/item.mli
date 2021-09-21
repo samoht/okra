@@ -39,7 +39,7 @@ type t =
   | Blockquote of t list
   | Code_block of string * string
 
-val pp : t Fmt.t
-val pp_inline : inline Fmt.t
+val pp : t -> PPrint.document
+val pp_inline : inline -> PPrint.document
 val dump : t Fmt.t
 val dump_inline : inline Fmt.t

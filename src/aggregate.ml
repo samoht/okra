@@ -42,7 +42,7 @@ type elt =
   | KR of string (* Full name of KR, with ID *)
   | KR_id of string (* ID of KR *)
   | KR_title of string (* Title without ID, tech lead *)
-  | Work of Item.t list (* List of work items *)
+  | Work of Item.t list list (*  Work items *)
   | Time of string (* Time entry *)
   | Counter of int
 (* Increasing counter to be able to sort multiple entries by time *)
@@ -102,7 +102,7 @@ let pp ppf okr =
     | KR s -> Fmt.pf ppf "KR: %s" s
     | KR_id s -> Fmt.pf ppf "KR id: %s" s
     | KR_title s -> Fmt.pf ppf "KR title: %s" s
-    | Work w -> Fmt.pf ppf "W: %a" Fmt.Dump.(list Item.pp) w
+    | Work w -> Fmt.pf ppf "W: %a" Fmt.Dump.(list (list Item.dump)) w
     | Time _ -> Fmt.pf ppf "Time: <not shown>"
     | Counter c -> Fmt.pf ppf "Cnt: %d" c
   in
@@ -130,8 +130,7 @@ let store_result store okr_list =
   match has_time with
   | false ->
       raise
-        (No_time_found
-           (Fmt.str "WARNING: Time not found. Ignored %a\n" pp okr_list))
+        (No_time_found (Fmt.str "@[<hov 2>Time not found.@ %a@]\n" pp okr_list))
   | true -> (
       match Hashtbl.find_opt store key with
       | None -> Hashtbl.add store key [ okr_list ]
@@ -166,10 +165,19 @@ let rec block = function
   | Thematic_break _ -> raise (Invalid_markdown_in_work_items "Thematic_break")
   | Heading _ -> raise (Invalid_markdown_in_work_items "Heading")
 
+let inline_to_string i =
+  let buf = Buffer.create 10 in
+  PPrint.ToBuffer.pretty 10. 80 buf (Item.pp_inline i);
+  Buffer.contents buf
+
+let item_to_string i =
+  let buf = Buffer.create 10 in
+  PPrint.ToBuffer.pretty 10. 80 buf (Item.pp i);
+  Buffer.contents buf
+
 let block_okr = function
   | Paragraph (_, x) -> (
-      let to_string = Fmt.to_to_string Item.pp_inline in
-      let okr_title = String.trim (to_string (inline x)) in
+      let okr_title = String.trim (inline_to_string (inline x)) in
       match parse_okr_title okr_title with
       | None -> [ KR okr_title; KR_title okr_title ]
       | Some (title, id) -> [ KR okr_title; KR_title title; KR_id id ])
@@ -187,11 +195,10 @@ let block_okr = function
             is_time_block tb
           then
             (* todo verify that this is true *)
-            let to_string = Fmt.to_to_string Item.pp in
             let time_s =
-              String.concat "" (List.map (fun b -> to_string (block b)) tb)
+              String.concat "" (List.map (fun b -> item_to_string (block b)) tb)
             in
-            let work_items = List.concat_map (List.map block) tl in
+            let work_items = List.map (List.map block) tl in
             [ Time time_s; Work work_items ]
           else [])
   | _ -> []

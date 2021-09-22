@@ -38,6 +38,7 @@ type t =
   | List of list_type * t list list
   | Blockquote of t list
   | Code_block of string * string
+  | Title of int * string
 
 val pp : t -> PPrint.document
 val pp_inline : inline -> PPrint.document

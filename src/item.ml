@@ -37,6 +37,7 @@ type t =
   | List of list_type * t list list
   | Blockquote of t list
   | Code_block of string * string
+  | Title of int * string
 
 (* Dump contents *)
 
@@ -72,6 +73,7 @@ let rec dump ppf = function
       Fmt.pf ppf "List (%a, %a)" dump_list_type x Fmt.Dump.(list (list dump)) y
   | Blockquote l -> Fmt.pf ppf "Blockquote %a" Fmt.(Dump.list dump) l
   | Code_block (x, y) -> Fmt.pf ppf "Code_block (%S, %S)" x y
+  | Title (n, x) -> Fmt.pf ppf "Title (%d, %S)" n x
 
 (* Pretty-print contents *)
 
@@ -104,11 +106,17 @@ let rec pp_inline = function
 let stringf fmt = Fmt.kstr string fmt
 
 let rec pp = function
-  | Paragraph t -> pp_inline t ^^ hardline
+  | Paragraph t -> pp_inline t
   | List (Ordered (i, c), y) ->
-      concat_map (fun e -> stringf "%d%c " i c ^^ nest 2 (concat_map pp e)) y
+    separate_map hardline
+      (fun e -> stringf "%d%c " i c ^^ nest 2 (concat_map pp e)) y
   | List (Bullet c, y) ->
-      concat_map (fun e -> stringf "%c " c ^^ nest 2 (concat_map pp e)) y
+    separate_map hardline
+      (fun e -> stringf "%c " c ^^ nest 2 (separate_map hardline pp e)) y
   | Blockquote l -> group (string "> " ^^ concat_map pp l)
-  | Code_block (x, y) ->
-      nest 0 (string "```" ^^ string x ^/^ string y ^/^ string "```")
+  | Code_block (lang, code) ->
+    string "```" ^^ string lang ^^ hardline ^^
+    arbitrary_string code ^^ hardline ^^
+    string "```"
+  | Title (lvl, str) ->
+    group (string (String.make lvl '#') ^/^ string str) ^^ hardline

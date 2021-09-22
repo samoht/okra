@@ -52,27 +52,35 @@ let compare a b =
     else String.compare a.objective b.objective
   else String.compare a.project b.project
 
-open PPrint
-
-let stringf fmt = Fmt.kstr string fmt
-
-let pp_days d =
+let make_days d =
   let d = floor (d *. 2.0) /. 2. in
-  if d = 1. then string "1 day"
-  else if classify_float (fst (modf d)) = FP_zero then stringf "%.0f days" d
-  else stringf "%.1f days" d
+  if d = 1. then
+    "1 day"
+  else if classify_float (fst (modf d)) = FP_zero then
+    Printf.sprintf "%.0f days" d
+  else
+    Printf.sprintf "%.1f days" d
 
-let pp_engineer ~time (e, d) =
+let make_engineer ~time (e, d) =
   if time then
-    group (string "@" ^^ string e ^^ string " (" ^^ pp_days d ^^ string ")")
-  else group (string "@" ^^ string e)
+    Printf.sprintf "@%s (%s)" e (make_days d)
+  else
+    Printf.sprintf "@%s" e
 
-let pp_engineers ~time entries =
+let make_engineers ~time entries =
   let entries = List.of_seq (Hashtbl.to_seq entries) in
   let entries = List.sort (fun (x, _) (y, _) -> String.compare x y) entries in
-  group (separate_map (string ", ") (pp_engineer ~time) entries)
+  let engineers = List.rev_map (make_engineer ~time) entries in
+  match engineers with
+  | [] -> []
+  | e :: es ->
+    let open Item in
+    let lst =
+      List.fold_left (fun acc engineer -> Text engineer :: Text ", " :: acc)
+        [Text e] es
+    in
+    [ Paragraph (Concat lst) ]
 
-(* FIXME: remove side-effect *)
 let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
     ?(show_engineers = true) okrs =
   let uppercase_include_krs = List.map String.uppercase_ascii include_krs in
@@ -80,65 +88,66 @@ let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
   let c_objective = ref "" in
   let c_kr_id = ref "" in
   let c_kr_title = ref "" in
-  concat_map
-    (fun e ->
-      (* only proceed if include_krs is empty or has a match *)
-      if List.length include_krs = 0 || List.mem e.kr_id uppercase_include_krs
-      then (
-        let project =
-          if e.project <> !c_project then (
-            c_project := e.project;
-            group (string "# " ^^ string e.project ^^ hardline ^^ hardline))
-          else empty
-        in
-        let objective =
-          if e.objective <> !c_objective then (
-            c_objective := e.objective;
-            group (string "## " ^^ string e.objective ^^ hardline ^^ hardline))
-          else empty
-        in
-        let kr =
-          if e.kr_id <> !c_kr_id || e.kr_title <> !c_kr_title then (
-            c_kr_title := e.kr_title;
-            c_kr_id := e.kr_id;
-            group
-              (string "- "
-              ^^ string e.kr_title
-              ^^ string " ("
-              ^^ string e.kr_id
-              ^^ string ")"
-              ^^ hardline))
-          else empty
-        in
-        let engineers =
-          if show_engineers then
-            if show_time then
-              if show_time_calc then
-                (* show time calc + engineers *)
-                concat_map
-                  (fun e -> group (string "  - + " ^^ string e ^^ hardline))
-                  e.time_entries
-                ^^ group
-                     (string "  - = "
-                     ^^ pp_engineers ~time:true e.time_per_engineer
-                     ^^ hardline)
-              else
-                (* show total time for each engineer *)
-                group
-                  (string "  - "
-                  ^^ pp_engineers ~time:true e.time_per_engineer
-                  ^^ hardline)
-            else
-              group
-                (string "  - "
-                ^^ pp_engineers ~time:false e.time_per_engineer
-                ^^ hardline)
-          else empty
-        in
-        Fmt.epr "XXXX %a\n%!" Fmt.Dump.(list (list Item.dump)) e.work;
-        let work =
-          nest 2 (string "  " ^^ Item.pp (Item.List (Item.Bullet '-', e.work)))
-        in
-        project ^^ objective ^^ kr ^^ engineers ^^ work)
-      else empty (* skip this KR *))
-    (List.sort compare okrs)
+  List.concat_map (fun e ->
+    (* only proceed if include_krs is empty or has a match *)
+      if List.length include_krs <> 0 && 
+        not (List.mem e.kr_id uppercase_include_krs)
+      then
+        []
+       else (
+         let open Item in
+         let add_project acc =
+           if e.project <> !c_project then (
+             c_project := e.project;
+             Title (1, e.project) :: acc
+           ) else
+             acc
+         in
+         let add_objective acc =
+           if e.objective <> !c_objective then (
+             c_objective := e.objective;
+             Title (2, e.objective) :: acc
+           ) else 
+             acc
+         in
+         let kr_item =
+           if e.kr_id <> !c_kr_id || e.kr_title <> !c_kr_title then (
+             c_kr_title := e.kr_title;
+             c_kr_id := e.kr_id;
+             [Paragraph (Text (Printf.sprintf "%s (%s)" e.kr_title e.kr_id))]
+           ) else 
+             []
+         in
+         let engineers_items =
+           if not show_engineers then
+             []
+           else (
+             if show_time then
+               if show_time_calc then
+                 (* show time calc + engineers *)
+                 [
+                   List (
+                     Bullet '+',
+                     List.map (fun x -> [Paragraph (Text x)]) e.time_entries
+                   );
+                   List (
+                     Bullet '=', 
+                     [make_engineers ~time:true e.time_per_engineer]
+                   )
+                 ]
+               else
+                 make_engineers ~time:true e.time_per_engineer
+             else
+               make_engineers ~time:false e.time_per_engineer
+           )
+         in
+         Fmt.epr "XXXX %a\n%!" Fmt.Dump.(list (list Item.dump)) e.work;
+         add_project @@
+         add_objective @@
+         [
+           List (Bullet '-',
+                 [kr_item @ [List (Bullet '-', engineers_items :: e.work)]])
+         ]
+       )
+  ) (List.sort compare okrs)
+  |> PPrint.(separate_map hardline) Item.pp

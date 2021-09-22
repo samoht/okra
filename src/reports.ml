@@ -84,7 +84,7 @@ let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
     (fun e ->
       (* only proceed if include_krs is empty or has a match *)
       if List.length include_krs = 0 || List.mem e.kr_id uppercase_include_krs
-      then
+      then (
         let project =
           if e.project <> !c_project then (
             c_project := e.project;
@@ -135,13 +135,10 @@ let pp ?(include_krs = []) ?(show_time = true) ?(show_time_calc = true)
                 ^^ hardline)
           else empty
         in
+        Fmt.epr "XXXX %a\n%!" Fmt.Dump.(list (list Item.dump)) e.work;
         let work =
-          concat_map
-            (fun l ->
-              Fmt.epr "XXX ITEM=%a\n%!" Fmt.Dump.(list Item.dump) l;
-              string "  - " ^^ nest 4 (concat_map (fun e -> Item.pp e) l))
-            e.work
+          nest 2 (string "  " ^^ Item.pp (Item.List (Item.Bullet '-', e.work)))
         in
-        project ^^ objective ^^ kr ^^ engineers ^^ work
+        project ^^ objective ^^ kr ^^ engineers ^^ work)
       else empty (* skip this KR *))
     (List.sort compare okrs)

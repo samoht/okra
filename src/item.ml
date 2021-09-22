@@ -45,7 +45,7 @@ let dump_list_type ppf = function
   | Bullet c -> Fmt.pf ppf "Bullet %c" c
 
 let rec dump_inline ppf = function
-  | Concat c -> Fmt.Dump.list dump_inline ppf c
+  | Concat c -> Fmt.pf ppf "Concat %a" (Fmt.Dump.list dump_inline) c
   | Text s -> Fmt.pf ppf "Text %S" s
   | Emph e -> Fmt.pf ppf "Emph (%a)" dump_inline e
   | Strong e -> Fmt.pf ppf "Strong (%a)" dump_inline e
@@ -78,11 +78,11 @@ let rec dump ppf = function
 open PPrint
 
 let rec pp_inline = function
-  | Concat c -> group (concat_map pp_inline c)
+  | Concat c -> concat_map pp_inline c
   | Text s -> string s
-  | Emph e -> group (string "*" ^^ pp_inline e ^^ string "*")
-  | Strong e -> group (string "**" ^^ pp_inline e ^^ string "**")
-  | Code s -> group (string "`" ^^ string s ^^ string "`")
+  | Emph e -> string "*" ^^ pp_inline e ^^ string "*"
+  | Strong e -> string "**" ^^ pp_inline e ^^ string "**"
+  | Code s -> string "`" ^^ string s ^^ string "`"
   | Hard_break -> hardline ^^ hardline
   | Soft_break -> hardline
   | Link l ->

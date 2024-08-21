@@ -1,6 +1,17 @@
-(dirs :standard \ ignored)
 (executable
-	(name okra)
-	(public_name okra)
-	(libraries omd str)
-)
+ (name main)
+ (package okra)
+ (public_name okra)
+ (libraries
+  okra-lib
+  cmdliner
+  bos
+  yaml
+  cohttp-lwt-unix
+  fmt.cli
+  logs.cli
+  fmt.tty
+  dune-build-info
+  xdg)
+ (preprocess
+  (pps ppx_deriving_yaml)))

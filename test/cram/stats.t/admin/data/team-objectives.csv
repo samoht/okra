@@ -1,0 +1,6 @@
+"id","title","status","quarter","team","pillar","objective","funder","labels","progress"
+"#543","Ensure OCaml 5 series has feature parity with OCaml 4 (Commercial)","In Progress","Q2 2024","Compiler Backend","Compiler","","Jane Street - Commercial","Proposal",""
+"#558","Property-Based Testing for Multicore","In Progress","Q2 2024","Compiler & Language","Compiler","","","Proposal",""
+"#677","Improve OCaml experience on Windows","Todo","Q2 2024","Multicore applications","Ecosystem","","","",""
+"#678","Maintenance - internal tooling","In Progress","Rolling","Internal tools","Ecosystem","","","level/team",""
+"#701","JSOO Effect Performance","","Q2 2024","Compiler & Language","Compiler","","","focus/technology,level/team",""

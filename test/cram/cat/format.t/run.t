@@ -1,0 +1,43 @@
+
+The file admin/weekly/2024/01/eng1.md contains a code block that should preserve its formatting:
+
+  $ okra lint -e admin/weekly/2024/24/eng1.md
+  [OK]: admin/weekly/2024/24/eng1.md
+
+  $ okra cat -e admin/weekly/2024/24/eng1.md > eng1-out.md
+  $ cat eng1-out.md
+  # Last Week
+  
+  - Property-Based Testing for Multicore (#558)
+    - @jmid (3 days)
+    - Foo foo
+      - Bar:
+        ```
+        random seed: 107236932
+        generated error fail pass / total     time test name
+        
+        [ ]    0    0    0    0 / 1000     0.0s STM Domain.DLS test sequential
+        [00] file runtime/shared_heap.c; line 787 ### Assertion failed: Has_status_val(v, caml_global_heap_state.UNMARKED)
+        /usr/bin/bash: line 1: 394730 Aborted                 (core dumped) ./focusedtest.exe -v -s 107236932
+        [ ]    0    0    0    0 / 1000     0.0s STM Domain.DLS test sequential (generating)
+        ```
+      - Foo the foo?
+        > xxx
+        > xxx
+        | aaa | bbb | ccc |
+        | --- | --- | --- |
+        | aaa | bbb | ccc |
+        | aaa | bbb | ccc |
+        <table>
+          <tr><th>aaa</th></tr>
+          <tr><td><aaa></th></tr>
+        </table>
+        
+  
+  - Off
+    - @jmid (2 days)
+    - Foo
+    - Bar
+
+  $ okra lint -e eng1-out.md
+  [OK]: eng1-out.md

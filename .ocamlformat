@@ -1,0 +1,6 @@
+version = 0.26.1
+profile = conventional
+ocaml-version = 4.10
+break-infix = fit-or-vertical
+wrap-comments = true
+parse-docstrings = true

@@ -1,0 +1,6 @@
+(test
+ (name test)
+ (package okra-lib)
+ (deps
+  (source_tree reports))
+ (libraries alcotest okra-lib logs.fmt))

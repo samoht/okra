@@ -1,50 +1,120 @@
-OKR report aggregation tool
-=======
+<h1 align="center">
+  okra
+</h1>
 
-Prototype aggregation tool for markdown-based OKR reports. This is work in progress.
+<p align="center">
+  <strong>Aggregation tool for markdown-based activity reports.</strong>
+</p>
 
-## Running it
+<p align="center">
+  <!--
+  <a href="https://ocaml.ci.dev/github/tarides/okra">
+    <img src="https://img.shields.io/endpoint?url=https://ocaml.ci.dev/badge/tarides/okra/main&logo=ocaml" alt="OCaml-CI Build Status" />
+  </a>
+  -->
 
-The code reads data from stdin, aggregates per KR and outputs the result.
+  <a href="https://github.com/tarides/okra/actions/workflows/build.yml">
+    <img src="https://github.com/tarides/okra/actions/workflows/build.yml/badge.svg?branch=main" alt="Build Status" />
+  </a>
+</p>
 
-Example:
+`okra` can:
+
+ - Generate a weekly report stub with your Github activity
+ - Lint reports to check they are in the expected format
+ - Aggregate weekly reports for multiple engineers and projects
+
+## Getting Started
+
+### Installation
+
+Install opam if you don't already have it, and add [`tarides/opam-repository`](https://github.com/tarides/opam-repository) to your list of opam repositories:
+
+Either only to the current opam switch with the command:
+```sh
+opam repository add tarides https://github.com/tarides/opam-repository.git
 
 ```
-# cat okr-report1.md okr-report2.md | okra | less
+
+Or to the list of opam repositories for all opam switches with the command:
+```sh
+opam repository add --all tarides https://github.com/tarides/opam-repository.git
 ```
 
-If there are warnings that are not expected (i.e not about the "OKR updates" section), they should be manually resolved. There's also a script that handles some common formatting issues by fixing indents, bulletpoints etc (fmt.sh). To use it:
-
-
+However, note that if you use `--all` as above, you will then have to
+instruct opam to also search in that repository in each switch, as the list
+of repositories opam is considering is switch-specific. Once you are in a
+given switch, this can be done with:
+```sh
+opam remote set-repos default tarides
 ```
-# cat okr-report1.md okr-report2.md | ./fmt.sh | okra | less
-```
+where the repositories are listed in search order, i.e. here we ask opam to
+look in its `default` repository first and in the `tarides` repository after
+that.
 
-## Report format
-
-The expected report format:
-
-```
-# Project
-
-## Objective
-
-- My KR (KR ID)
-  - @engineer1 (1 day), @engineer2 (2 days)
-  - work item 1
-    - subitem
-  - work item 2
+Update your list of packages:
+```sh
+opam update
 ```
 
-The tool will attempt to group data by project, objective and KR if these match.
+Then you can install okra. If you had it installed previously through pinning simply run:
+```sh
+opam pin remove okra
+```
 
-## Fixing warnings
+This will both remove the pinned version and install the new one. You may also need to
+`opam pin remove okra-lib` too.
 
-Warnings will be shown for sections that are unparsable for some reason. This can be because it doesn't follow the defined format (e.g. it is valid, but something else) or it can have accidental formatting errors. You should always check all warnings to make sure that the returned result is correct.
+If okra is not installed yet, run:
+```sh
+opam install okra
+```
 
-Some issues that cause warnings:
+### Usage
 
-  - Sections/Headlines that contain other data, such as OKR updates. This is usually fine, and if the section is given the heading "OKR updates" it will automatically be ignored from the warnings.
-  - Inconsistent bulletpoint formatting. If switching between different bulletpoint markers (such as +, - and asterisk) in the same list, the parser `omd` can become confused. Fix this by always using `-`.
-  - Inconsistent indent. If the indent for bulletpoints is only a space (instead of two or a tab) the parse can be confused. Similarly if it switches between tabs and spaces.
-  - The OKR line is not followed by a line of engineer-time, with each name prefixed by '@' -- sometimes the '@' is forgotten.
+#### For engineers
+
+To generate your last week report:
+```sh
+okra gen
+```
+
+To update your report by rewriting workitems into objectives:
+```sh
+okra cat -C /path/to/admin -e old_weekly.md -o new_weekly.md
+```
+
+To lint your report:
+```sh
+okra lint -e -C /path/to/admin/ report.md
+```
+
+For more details, please refer to the [Engineer's Manual](docs/engineers-manual.md).
+
+#### For team leads
+
+To aggregate engineer reports:
+```sh
+cat magnus.md patrick.md | okra cat --engineer
+```
+
+To lint engineer reports of your team:
+```sh
+okra team lint -C /path/to/admin/ -w 40-41
+```
+
+To aggregate team reports:
+```sh
+cat team1.md team2.md | okra cat --team
+```
+
+To lint a team report:
+```sh
+okra lint -t -C /path/to/admin/ report.md
+```
+
+For more details, please refer to the [Team Lead's Manual](docs/team-leads-manual.md).
+
+## Documentation
+
+The full documentation for okra can be found [here](docs/README.md).
